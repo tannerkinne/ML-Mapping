@@ -19,9 +19,16 @@ for data in data_list:
     kmeans = KMeans(n_clusters=k, random_state=0, n_init='auto')
     labels = kmeans.fit_predict(X_scaled)               # clustering:contentReference[oaicite:14]{index=14}
 
+
+
     # Assign zones and save
     data['zone'] = labels
-    data.to_csv('soil_zones.csv', index=False)
+    if first:
+        data.to_csv('soil_zones_pattern.csv', index=False)
+    else:
+        data.to_csv('soil_zones_random.csv', index=False)
+
+
 
     import folium
 
