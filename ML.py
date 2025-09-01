@@ -12,12 +12,12 @@ for data in data_list:
 
     # Preprocess
     features = data[['soil_moisture','N','P','K','pH','temp']].values
-    X_scaled = StandardScaler().fit_transform(features)  # normalize features:contentReference[oaicite:13]{index=13}
+    X_scaled = StandardScaler().fit_transform(features)
 
     # Apply k-means
     k = 4  # example number of clusters
     kmeans = KMeans(n_clusters=k, random_state=0, n_init='auto')
-    labels = kmeans.fit_predict(X_scaled)               # clustering:contentReference[oaicite:14]{index=14}
+    labels = kmeans.fit_predict(X_scaled)
 
 
 
@@ -39,21 +39,71 @@ for data in data_list:
         3: "red"
     }
 
-    # Center map on field mean location
-    center = [data.lat.mean(), data.lon.mean()]
-    m = folium.Map(location=center, zoom_start=17, tiles=None)  # offline mode:contentReference[oaicite:16]{index=16}
-    # Add markers for each point colored by zone
-    for _, row in data.iterrows():
-        folium.CircleMarker(
-            location=[row.lat, row.lon],
-            radius=4,
-            color=zone_color[row.zone],
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"Zone: {row.zone}\nMoisture: {row.soil_moisture:.1f}%\nN: {row.N:.1f}"
-        ).add_to(m)
-    if first:
-        m.save('field_zones_pattern.html')
-        first = False
-    else:
-        m.save('field_zones_random.html')
+
+    import pandas as pd
+
+    # Summarize average conditions per cluster
+    summary = data.groupby("zone")[['soil_moisture', 'N', 'P', 'K', 'pH', 'temp']].mean()
+
+    # Define thresholds and tips
+    tips = {}
+    for zone, row in summary.iterrows():
+        recs = []
+        # Soil moisture
+        if row['soil_moisture'] < 25:
+            recs.append("Low moisture → increase irrigation")
+        elif row['soil_moisture'] > 70:
+            recs.append("High moisture → reduce irrigation")
+        # Nitrogen
+        if row['N'] < 20:
+            recs.append("Low nitrogen → add N fertilizer")
+        elif row['N'] > 50:
+            recs.append("High nitrogen → monitor over-fertilization")
+        # Phosphorus
+        if row['P'] < 15:
+            recs.append("Low phosphorus → apply P fertilizer")
+        # Potassium
+        if row['K'] < 15:
+            recs.append("Low potassium → apply K fertilizer")
+        # pH
+        if row['pH'] < 5.5:
+            recs.append("Soil acidic → apply lime")
+        elif row['pH'] > 7.5:
+            recs.append("Soil alkaline → apply sulfur or acidifier")
+        # Temperature (example thresholds)
+        if row['temp'] < 10:
+            recs.append("Cold zone → planting risk")
+        elif row['temp'] > 35:
+            recs.append("Hot zone → heat stress risk")
+        # Default if no issues
+        if not recs:
+            recs.append("Conditions are optimal")
+
+        tips[zone] = "; ".join(recs)
+
+    print("Tips per zone:\n")
+    for z, t in tips.items():
+        print(f"Zone {z}: {t}")
+
+        # Center map on field mean location
+        center = [data.lat.mean(), data.lon.mean()]
+        m = folium.Map(location=center, zoom_start=17, tiles=None)
+        # Add markers for each point colored by zone
+        for _, row in data.iterrows():
+            folium.CircleMarker(
+                location=[row.lat, row.lon],
+                radius=4,
+                color=zone_color[row.zone],
+                fill=True,
+                fill_opacity=0.7,
+                popup=f"Zone: {row.zone}\nTips: {tips[row.zone]}"
+            ).add_to(m)
+        if first:
+            m.save('field_zones_pattern.html')
+            first = False
+        else:
+            m.save('field_zones_random.html')
+
+
+
+
