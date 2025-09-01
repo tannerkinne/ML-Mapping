@@ -40,7 +40,10 @@ for data in data_list:
         folium.CircleMarker(
             location=[row.lat, row.lon],
             radius=4,
-            color=zone_color[row.zone], fill=True
+            color=zone_color[row.zone],
+            fill=True,
+            fill_opacity=0.7,
+            popup=f"Zone: {row.zone}\nMoisture: {row.soil_moisture:.1f}%\nN: {row.N:.1f}"
         ).add_to(m)
     if first:
         m.save('field_zones_pattern.html')
